@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DFS Lineups — 2026-04-07</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f4f4f4; color: #222; padding: 20px; }
+  h1 { font-size: 18px; font-weight: 500; margin-bottom: 16px; color: #333; }
+  .lu-controls { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; align-items: center; }
+  .lu-controls select, .lu-controls input { font-size: 13px; padding: 5px 8px; border: 1px solid #ddd; border-radius: 6px; background: #fff; }
+  .lu-controls label { font-size: 13px; color: #666; }
+  .lu-controls button { padding: 5px 10px; border: 1px solid #ddd; border-radius: 6px; background: #fff; cursor: pointer; font-size: 13px; }
+  .lu-controls button:hover { background: #f5f5f5; }
+  .lu-summary { display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+  .lu-stat { background: #fff; border-radius: 6px; padding: 8px 14px; flex: 1; min-width: 80px; border: 1px solid #e5e5e5; }
+  .lu-stat .sl { font-size: 11px; color: #888; }
+  .lu-stat .sv { font-size: 18px; font-weight: 500; color: #111; }
+  .lu-card { border: 1px solid #e5e5e5; border-radius: 10px; margin-bottom: 10px; overflow: hidden; background: #fff; }
+  .lu-hdr { display: flex; justify-content: space-between; align-items: center; padding: 9px 14px; cursor: pointer; }
+  .lu-hdr:hover { background: #f9f9f9; }
+  .lu-left { display: flex; align-items: center; gap: 8px; }
+  .lu-num { font-size: 13px; color: #888; font-weight: 500; }
+  .lu-badge { font-size: 11px; font-weight: 500; padding: 2px 7px; border-radius: 5px; }
+  .b-mean { background:#f0f0f0; color:#555; }
+  .b-p75  { background:#e8f5e9; color:#2e7d32; }
+  .b-p90  { background:#e3f2fd; color:#1565c0; }
+  .b-blend { background:#ede7f6; color:#4527a0; }
+  .lu-right { display: flex; gap: 14px; align-items: center; }
+  .lu-pg { text-align: right; }
+  .lu-pg .pl { font-size: 11px; color: #888; }
+  .lu-pg .pv { font-size: 14px; font-weight: 500; color: #111; }
+  .lu-chev { font-size: 11px; color: #aaa; transition: transform 0.15s; display: inline-block; }
+  .lu-chev.open { transform: rotate(90deg); }
+  .lu-body { display: none; }
+  .lu-body.open { display: block; }
+  .lu-tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .lu-tbl th { text-align: left; padding: 7px 14px; font-size: 11px; color: #888; background: #f9f9f9; border-bottom: 1px solid #eee; font-weight: 500; }
+  .lu-tbl th.r, .lu-tbl td.r { text-align: right; }
+  .lu-tbl td { padding: 7px 14px; border-bottom: 1px solid #f0f0f0; color: #222; }
+  .lu-tbl tbody tr:not(.lu-total):hover td { background: #fafafa; }
+  .pos-sp  { background:#fff3e0; color:#e65100; border:1px solid #ffcc80; font-size:10px; font-weight:500; padding:1px 5px; border-radius:4px; }
+  .pos-of  { background:#f3e5f5; color:#6a1b9a; border:1px solid #ce93d8; font-size:10px; font-weight:500; padding:1px 5px; border-radius:4px; }
+  .pos-inf { background:#e8f5e9; color:#1b5e20; border:1px solid #a5d6a7; font-size:10px; font-weight:500; padding:1px 5px; border-radius:4px; }
+  .pos-c   { background:#e3f2fd; color:#0d47a1; border:1px solid #90caf9; font-size:10px; font-weight:500; padding:1px 5px; border-radius:4px; }
+  .lu-total td { font-weight: 600; background: #1a1a2e; color: #fff; border-top: 2px solid #1a1a2e; }
+  .lu-total td.r { color: #7ec8e3; }
+  .exp-bar { padding: 8px 14px 10px; border-top: 1px solid #eee; }
+  .exp-lbl { font-size: 11px; color: #888; margin-bottom: 5px; }
+  .exp-pills { display: flex; flex-wrap: wrap; gap: 5px; }
+  .exp-pill { font-size: 11px; padding: 2px 8px; border-radius: 99px; background: #fff3e0; color: #e65100; border: 1px solid #ffcc80; }
+</style>
+</head>
+<body>
+<h1>DFS Lineups — 2026-04-07</h1>
+<div class="lu-controls">
+  <label>Percentile:</label>
+  <select id="lu_pctF" onchange="lu_refresh()">
+    <option value="all">All</option>
+    <option value="mean">Mean</option>
+    <option value="p75">P75</option>
+    <option value="p90">P90</option>
+    <option value="blend">Blend</option>
+  </select>
+  <label style="margin-left:6px">Sort:</label>
+  <select id="lu_sortF" onchange="lu_refresh()">
+    <option value="mean">Mean pts</option>
+    <option value="p90">P90 pts</option>
+    <option value="salary">Salary</option>
+  </select>
+  <label style="margin-left:6px">Min mean pts:</label>
+  <input type="number" id="lu_minPts" value="0" step="5" style="width:68px" oninput="lu_refresh()">
+  <button onclick="lu_expandAll()">Expand all</button>
+  <button onclick="lu_collapseAll()">Collapse all</button>
+</div>
+<div class="lu-summary" id="lu_summary"></div>
+<div id="lu_grid"></div>
+
+<script>
+const DATA = [{"id": 1, "pct": "mean", "salary": 34800, "mean_pts": 242.6, "p90_pts": 308.0, "players": [{"name": "Aaron Judge", "pos": "OF", "team": "NYY", "salary": 4400, "mean": 33.1, "p90": 43.4}, {"name": "Giancarlo Stanton", "pos": "OF", "team": "NYY", "salary": 3500, "mean": 29.1, "p90": 37.6}, {"name": "Jazz Chisholm Jr.", "pos": "2B", "team": "NYY", "salary": 2900, "mean": 22.9, "p90": 28.7}, {"name": "Nick Kurtz", "pos": "C", "team": "OAK", "salary": 3600, "mean": 30.3, "p90": 40.1}, {"name": "Corey Seager", "pos": "SS", "team": "TEX", "salary": 3600, "mean": 23.3, "p90": 28.4}, {"name": "Cal Raleigh", "pos": "C", "team": "SEA", "salary": 3200, "mean": 28.9, "p90": 40.5}, {"name": "Isaac Paredes", "pos": "3B", "team": "HOU", "salary": 3700, "mean": 27.4, "p90": 35.0}, {"name": "Kyle Schwarber", "pos": "OF", "team": "PHI", "salary": 3900, "mean": 27.2, "p90": 33.9}, {"name": "Kyle Freeland", "pos": "SP", "team": "COL", "salary": 6000, "mean": 20.4, "p90": 20.4}]}, {"id": 2, "pct": "mean", "salary": 34700, "mean_pts": 241.2, "p90_pts": 311.2, "players": [{"name": "Aaron Judge", "pos": "OF", "team": "NYY", "salary": 4400, "mean": 33.1, "p90": 43.4}, {"name": "Giancarlo Stanton", "pos": "OF", "team": "NYY", "salary": 3500, "mean": 29.1, "p90": 37.6}, {"name": "Nick Kurtz", "pos": "C", "team": "OAK", "salary": 3600, "mean": 30.3, "p90": 40.1}, {"name": "Daulton Varsho", "pos": "OF", "team": "TOR", "salary": 2700, "mean": 24.8, "p90": 33.9}, {"name": "Cal Raleigh", "pos": "C", "team": "SEA", "salary": 3200, "mean": 28.9, "p90": 40.5}, {"name": "Jeremy Peña", "pos": "SS", "team": "HOU", "salary": 3600, "mean": 22.7, "p90": 28.9}, {"name": "Jose Altuve", "pos": "2B", "team": "HOU", "salary": 4000, "mean": 24.5, "p90": 31.4}, {"name": "Isaac Paredes", "pos": "3B", "team": "HOU", "salary": 3700, "mean": 27.4, "p90": 35.0}, {"name": "Kyle Freeland", "pos": "SP", "team": "COL", "salary": 6000, "mean": 20.4, "p90": 20.4}]}, {"id": 3, "pct": "mean", "salary": 34900, "mean_pts": 236.8, "p90_pts": 306.4, "players": [{"name": "Aaron Judge", "pos": "OF", "team": "NYY", "salary": 4400, "mean": 33.1, "p90": 43.4}, {"name": "Giancarlo Stanton", "pos": "OF", "team": "NYY", "salary": 3500, "mean": 29.1, "p90": 37.6}, {"name": "Nick Kurtz", "pos": "C", "team": "OAK", "salary": 3600, "mean": 30.3, "p90": 40.1}, {"name": "Jacob Wilson", "pos": "SS", "team": "OAK", "salary": 2600, "mean": 18.3, "p90": 25.2}, {"name": "Jeff McNeil", "pos": "2B", "team": "OAK", "salary": 2700, "mean": 18.9, "p90": 24.7}, {"name": "Daulton Varsho", "pos": "OF", "team": "TOR", "salary": 2700, "mean": 24.8, "p90": 33.9}, {"name": "Cal Raleigh", "pos": "C", "team": "SEA", "salary": 3200, "mean": 28.9, "p90": 40.5}, {"name": "Isaac Paredes", "pos": "3B", "team": "HOU", "salary": 3700, "mean": 27.4, "p90": 35.0}, {"name": "Nathan Eovaldi", "pos": "SP", "team": "TEX", "salary": 8500, "mean": 26.0, "p90": 26.0}]}, {"id": 4, "pct": "mean", "salary": 34700, "mean_pts": 233.1, "p90_pts": 300.4, "players": [{"name": "Aaron Judge", "pos": "OF", "team": "NYY", "salary": 4400, "mean": 33.1, "p90": 43.4}, {"name": "Giancarlo Stanton", "pos": "OF", "team": "NYY", "salary": 3500, "mean": 29.1, "p90": 37.6}, {"name": "Nick Kurtz", "pos": "C", "team": "OAK", "salary": 3600, "mean": 30.3, "p90": 40.1}, {"name": "Cal Raleigh", "pos": "C", "team": "SEA", "salary": 3200, "mean": 28.9, "p90": 40.5}, {"name": "Julio Rodríguez", "pos": "OF", "team": "SEA", "salary": 3200, "mean": 22.1, "p90": 28.4}, {"name": "J.P. Crawford", "pos": "SS", "team": "SEA", "salary": 2700, "mean": 15.6, "p90": 21.9}, {"name": "Jose Altuve", "pos": "2B", "team": "HOU", "salary": 4000, "mean": 24.5, "p90": 31.4}, {"name": "Isaac Paredes", "pos": "3B", "team": "HOU", "salary": 3700, "mean": 27.4, "p90": 35.0}, {"name": "Yusei Kikuchi", "pos": "SP", "team": "LAA", "salary": 6400, "mean": 22.1, "p90": 22.1}]}, {"id": 5, "pct": "mean", "salary": 34900, "mean_pts": 225.7, "p90_pts": 283.1, "players": [{"name": "Aaron Judge", "pos": "OF", "team": "NYY", "salary": 4400, "mean": 33.1, "p90": 43.4}, {"name": "Jazz Chisholm Jr.", "pos": "2B", "team": "NYY", "salary": 2900, "mean": 22.9, "p90": 28.7}, {"name": "Shohei Ohtani", "pos": "OF", "team": "LAD", "salary": 4400, "mean": 27.8, "p90": 34.4}, {"name": "Freddie Freeman", "pos": "C", "team": "LAD", "salary": 3400, "mean": 20.1, "p90": 25.7}, {"name": "Teoscar Hernández", "pos": "OF", "team": "LAD", "salary": 2900, "mean": 20.1, "p90": 24.9}, {"name": "Corey Seager", "pos": "SS", "team": "TEX", "salary": 3600, "mean": 23.3, "p90": 28.4}, {"name": "Cal Raleigh", "pos": "C", "team": "SEA", "salary": 3200, "mean": 28.9, "p90": 40.5}, {"name": "Isaac Paredes", "pos": "3B", "team": "HOU", "salary": 3700, "mean": 27.4, "p90": 35.0}, {"name": "Yusei Kikuchi", "pos": "SP", "team": "LAA", "salary": 6400, "mean": 22.1, "p90": 22.1}]}, {"id": 6, "pct": "mean", "salary": 34700, "mean_pts": 222.8, "p90_pts": 280.0, "players": [{"name": "Giancarlo Stanton", "pos": "OF", "team": "NYY", "salary": 3500, "mean": 29.1, "p90": 37.6}, {"name": "Jazz Chisholm Jr.", "pos": "2B", "team": "NYY", "salary": 2900, "mean": 22.9, "p90": 28.7}, {"name": "Nick Kurtz", "pos": "C", "team": "OAK", "salary": 3600, "mean": 30.3, "p90": 40.1}, {"name": "Corey Seager", "pos": "SS", "team": "TEX", "salary": 3600, "mean": 23.3, "p90": 28.4}, {"name": "Ronald Acuña Jr.", "pos": "OF", "team": "ATL", "salary": 3200, "mean": 25.3, "p90": 34.4}, {"name": "Sean Murphy", "pos": "C", "team": "ATL", "salary": 2700, "mean": 21.6, "p90": 28.4}, {"name": "Austin Riley", "pos": "3B", "team": "ATL", "salary": 2800, "mean": 17.1, "p90": 22.5}, {"name": "Kyle Schwarber", "pos": "OF", "team": "PHI", "salary": 3900, "mean": 27.2, "p90": 33.9}, {"name": "Nathan Eovaldi", "pos": "SP", "team": "TEX", "salary": 8500, "mean": 26.0, "p90": 26.0}]}, {"id": 7, "pct": "mean", "salary": 35000, "mean_pts": 218.4, "p90_pts": 272.4, "players": [{"name": "Jazz Chisholm Jr.", "pos": "2B", "team": "NYY", "salary": 2900, "mean": 22.9, "p90": 28.7}, {"name": "Tyler Soderstrom", "pos": "C", "team": "OAK", "salary": 3000, "mean": 22.2, "p90": 28.9}, {"name": "George Springer", "pos": "OF", "team": "TOR", "salary": 3600, "mean": 24.8, "p90": 30.9}, {"name": "Daulton Varsho", "pos": "OF", "team": "TOR", "salary": 2700, "mean": 24.8, "p90": 33.9}, {"name": "Kazuma Okamoto", "pos": "3B", "team": "TOR", "salary": 3000, "mean": 20.5, "p90": 25.9}, {"name": "Corey Seager", "pos": "SS", "team": "TEX", "salary": 3600, "mean": 23.3, "p90": 28.4}, {"name": "Ronald Acuña Jr.", "pos": "OF", "team": "ATL", "salary": 3200, "mean": 25.3, "p90": 34.4}, {"name": "Kyle Schwarber", "pos": "OF", "team": "PHI", "salary": 3900, "mean": 27.2, "p90": 33.9}, {"name": "Kevin Gausman", "pos": "SP", "team": "TOR", "salary": 9100, "mean": 27.4, "p90": 27.4}]}, {"id": 8, "pct": "mean", "salary": 34900, "mean_pts": 216.1, "p90_pts": 270.1, "players": [{"name": "Jazz Chisholm Jr.", "pos": "2B", "team": "NYY", "salary": 2900, "mean": 22.9, "p90": 28.7}, {"name": "Daulton Varsho", "pos": "OF", "team": "TOR", "salary": 2700, "mean": 24.8, "p90": 33.9}, {"name": "Kazuma Okamoto", "pos": "3B", "team": "TOR", "salary": 3000, "mean": 20.5, "p90": 25.9}, {"name": "Shohei Ohtani", "pos": "OF", "team": "LAD", "salary": 4400, "mean": 27.8, "p90": 34.4}, {"name": "Mickey Moniak", "pos": "OF", "team": "COL", "salary": 3300, "mean": 24.7, "p90": 30.9}, {"name": "Ezequiel Tovar", "pos": "SS", "team": "COL", "salary": 3300, "mean": 20.6, "p90": 28.2}, {"name": "Troy Johnston", "pos": "C", "team": "COL", "salary": 2900, "mean": 21.6, "p90": 28.2}, {"name": "Kyle Schwarber", "pos": "OF", "team": "PHI", "salary": 3900, "mean": 27.2, "p90": 33.9}, {"name": "Nathan Eovaldi", "pos": "SP", "team": "TEX", "salary": 8500, "mean": 26.0, "p90": 26.0}]}, {"id": 9, "pct": "mean", "salary": 35000, "mean_pts": 208.6, "p90_pts": 261.8, "players": [{"name": "Shea Langeliers", "pos": "C", "team": "OAK", "salary": 4000, "mean": 24.8, "p90": 31.4}, {"name": "Tyler Soderstrom", "pos": "C", "team": "OAK", "salary": 3000, "mean": 22.2, "p90": 28.9}, {"name": "Jacob Wilson", "pos": "SS", "team": "OAK", "salary": 2600, "mean": 18.3, "p90": 25.2}, {"name": "Jeff McNeil", "pos": "2B", "team": "OAK", "salary": 2700, "mean": 18.9, "p90": 24.7}, {"name": "George Springer", "pos": "OF", "team": "TOR", "salary": 3600, "mean": 24.8, "p90": 30.9}, {"name": "Kazuma Okamoto", "pos": "3B", "team": "TOR", "salary": 3000, "mean": 20.5, "p90": 25.9}, {"name": "Shohei Ohtani", "pos": "OF", "team": "LAD", "salary": 4400, "mean": 27.8, "p90": 34.4}, {"name": "Ronald Acuña Jr.", "pos": "OF", "team": "ATL", "salary": 3200, "mean": 25.3, "p90": 34.4}, {"name": "Nathan Eovaldi", "pos": "SP", "team": "TEX", "salary": 8500, "mean": 26.0, "p90": 26.0}]}, {"id": 10, "pct": "mean", "salary": 35000, "mean_pts": 207.3, "p90_pts": 260.6, "players": [{"name": "Trent Grisham", "pos": "OF", "team": "NYY", "salary": 3100, "mean": 24.0, "p90": 30.9}, {"name": "Kazuma Okamoto", "pos": "3B", "team": "TOR", "salary": 3000, "mean": 20.5, "p90": 25.9}, {"name": "Mickey Moniak", "pos": "OF", "team": "COL", "salary": 3300, "mean": 24.7, "p90": 30.9}, {"name": "Jeremy Peña", "pos": "SS", "team": "HOU", "salary": 3600, "mean": 22.7, "p90": 28.9}, {"name": "Yordan Alvarez", "pos": "OF", "team": "HOU", "salary": 4600, "mean": 23.3, "p90": 30.9}, {"name": "Jose Altuve", "pos": "2B", "team": "HOU", "salary": 4000, "mean": 24.5, "p90": 31.4}, {"name": "Christian Walker", "pos": "C", "team": "HOU", "salary": 3800, "mean": 20.2, "p90": 25.2}, {"name": "Ronald Acuña Jr.", "pos": "OF", "team": "ATL", "salary": 3200, "mean": 25.3, "p90": 34.4}, {"name": "Yusei Kikuchi", "pos": "SP", "team": "LAA", "salary": 6400, "mean": 22.1, "p90": 22.1}]}, {"id": 11, "pct": "mean", "salary": 34600, "mean_pts": 205.0, "p90_pts": 254.5, "players": [{"name": "George Springer", "pos": "OF", "team": "TOR", "salary": 3600, "mean": 24.8, "p90": 30.9}, {"name": "Byron Buxton", "pos": "OF", "team": "MIN", "salary": 3400, "mean": 24.6, "p90": 30.9}, {"name": "Luke Keaschall", "pos": "2B", "team": "MIN", "salary": 2800, "mean": 19.4, "p90": 24.9}, {"name": "Mickey Moniak", "pos": "OF", "team": "COL", "salary": 3300, "mean": 24.7, "p90": 30.9}, {"name": "Ezequiel Tovar", "pos": "SS", "team": "COL", "salary": 3300, "mean": 20.6, "p90": 28.2}, {"name": "Troy Johnston", "pos": "C", "team": "COL", "salary": 2900, "mean": 21.6, "p90": 28.2}, {"name": "TJ Rumfield", "pos": "C", "team": "COL", "salary": 3300, "mean": 22.4, "p90": 27.9}, {"name": "Matt Chapman", "pos": "3B", "team": "SFG", "salary": 2900, "mean": 19.5, "p90": 25.2}, {"name": "Kevin Gausman", "pos": "SP", "team": "TOR", "salary": 9100, "mean": 27.4, "p90": 27.4}]}, {"id": 12, "pct": "mean", "salary": 34900, "mean_pts": 203.7, "p90_pts": 254.4, "players": [{"name": "Shohei Ohtani", "pos": "OF", "team": "LAD", "salary": 4400, "mean": 27.8, "p90": 34.4}, {"name": "Kyle Tucker", "pos": "OF", "team": "LAD", "salary": 4300, "mean": 22.3, "p90": 28.2}, {"name": "Freddie Freeman", "pos": "C", "team": "LAD", "salary": 3400, "mean": 20.1, "p90": 25.7}, {"name": "Teoscar Hernández", "pos": "OF", "team": "LAD", "salary": 2900, "mean": 20.1, "p90": 24.9}, {"name": "Jeremy Peña", "pos": "SS", "team": "HOU", "salary": 3600, "mean": 22.7, "p90": 28.9}, {"name": "Jose Altuve", "pos": "2B", "team": "HOU", "salary": 4000, "mean": 24.5, "p90": 31.4}, {"name": "Yoán Moncada", "pos": "3B", "team": "LAA", "salary": 2700, "mean": 18.8, "p90": 24.4}, {"name": "Ronald Acuña Jr.", "pos": "OF", "team": "ATL", "salary": 3200, "mean": 25.3, "p90": 34.4}, {"name": "Yusei Kikuchi", "pos": "SP", "team": "LAA", "salary": 6400, "mean": 22.1, "p90": 22.1}]}, {"id": 13, "pct": "mean", "salary": 35000, "mean_pts": 203.3, "p90_pts": 251.2, "players": [{"name": "Trent Grisham", "pos": "OF", "team": "NYY", "salary": 3100, "mean": 24.0, "p90": 30.9}, {"name": "Cody Bellinger", "pos": "C", "team": "NYY", "salary": 3300, "mean": 19.6, "p90": 25.4}, {"name": "Ben Rice", "pos": "C", "team": "NYY", "salary": 3700, "mean": 22.5, "p90": 28.9}, {"name": "José Caballero", "pos": "2B", "team": "NYY", "salary": 2600, "mean": 14.0, "p90": 16.5}, {"name": "Daulton Varsho", "pos": "OF", "team": "TOR", "salary": 2700, "mean": 24.8, "p90": 33.9}, {"name": "Kazuma Okamoto", "pos": "3B", "team": "TOR", "salary": 3000, "mean": 20.5, "p90": 25.9}, {"name": "Corey Seager", "pos": "SS", "team": "TEX", "salary": 3600, "mean": 23.3, "p90": 28.4}, {"name": "Kyle Schwarber", "pos": "OF", "team": "PHI", "salary": 3900, "mean": 27.2, "p90": 33.9}, {"name": "Kevin Gausman", "pos": "SP", "team": "TOR", "salary": 9100, "mean": 27.4, "p90": 27.4}]}, {"id": 14, "pct": "mean", "salary": 35000, "mean_pts": 203.3, "p90_pts": 257.3, "players": [{"name": "Trent Grisham", "pos": "OF", "team": "NYY", "salary": 3100, "mean": 24.0, "p90": 30.9}, {"name": "Shea Langeliers", "pos": "C", "team": "OAK", "salary": 4000, "mean": 24.8, "p90": 31.4}, {"name": "Tyler Soderstrom", "pos": "C", "team": "OAK", "salary": 3000, "mean": 22.2, "p90": 28.9}, {"name": "Jeff McNeil", "pos": "2B", "team": "OAK", "salary": 2700, "mean": 18.9, "p90": 24.7}, {"name": "Byron Buxton", "pos": "OF", "team": "MIN", "salary": 3400, "mean": 24.6, "p90": 30.9}, {"name": "Matt Wallner", "pos": "OF", "team": "MIN", "salary": 2900, "mean": 22.7, "p90": 31.2}, {"name": "Ezequiel Tovar", "pos": "SS", "team": "COL", "salary": 3300, "mean": 20.6, "p90": 28.2}, {"name": "Yoán Moncada", "pos": "3B", "team": "LAA", "salary": 2700, "mean": 18.8, "p90": 24.4}, {"name": "Cam Schlittler", "pos": "SP", "team": "NYY", "salary": 9900, "mean": 26.7, "p90": 26.7}]}, {"id": 15, "pct": "mean", "salary": 34900, "mean_pts": 202.8, "p90_pts": 253.5, "players": [{"name": "Shohei Ohtani", "pos": "OF", "team": "LAD", "salary": 4400, "mean": 27.8, "p90": 34.4}, {"name": "Byron Buxton", "pos": "OF", "team": "MIN", "salary": 3400, "mean": 24.6, "p90": 30.9}, {"name": "Luke Keaschall", "pos": "2B", "team": "MIN", "salary": 2800, "mean": 19.4, "p90": 24.9}, {"name": "Mickey Moniak", "pos": "OF", "team": "COL", "salary": 3300, "mean": 24.7, "p90": 30.9}, {"name": "Sean Murphy", "pos": "C", "team": "ATL", "salary": 2700, "mean": 21.6, "p90": 28.4}, {"name": "Drake Baldwin", "pos": "C", "team": "ATL", "salary": 3800, "mean": 23.3, "p90": 30.9}, {"name": "Ha-Seong Kim", "pos": "SS", "team": "ATL", "salary": 2600, "mean": 16.9, "p90": 23.2}, {"name": "Austin Riley", "pos": "3B", "team": "ATL", "salary": 2800, "mean": 17.1, "p90": 22.5}, {"name": "Kevin Gausman", "pos": "SP", "team": "TOR", "salary": 9100, "mean": 27.4, "p90": 27.4}]}, {"id": 16, "pct": "mean", "salary": 35000, "mean_pts": 201.1, "p90_pts": 252.9, "players": [{"name": "Trent Grisham", "pos": "OF", "team": "NYY", "salary": 3100, "mean": 24.0, "p90": 30.9}, {"name": "Julio Rodríguez", "pos": "OF", "team": "SEA", "salary": 3200, "mean": 22.1, "p90": 28.4}, {"name": "Josh Naylor", "pos": "C", "team": "SEA", "salary": 2600, "mean": 18.9, "p90": 24.9}, {"name": "Randy Arozarena", "pos": "OF", "team": "SEA", "salary": 3700, "mean": 21.8, "p90": 27.9}, {"name": "Dominic Canzone", "pos": "OF", "team": "SEA", "salary": 2800, "mean": 20.2, "p90": 27.9}, {"name": "Jeremy Peña", "pos": "SS", "team": "HOU", "salary": 3600, "mean": 22.7, "p90": 28.9}, {"name": "Jose Altuve", "pos": "2B", "team": "HOU", "salary": 4000, "mean": 24.5, "p90": 31.4}, {"name": "Matt Chapman", "pos": "3B", "team": "SFG", "salary": 2900, "mean": 19.5, "p90": 25.2}, {"name": "Kevin Gausman", "pos": "SP", "team": "TOR", "salary": 9100, "mean": 27.4, "p90": 27.4}]}, {"id": 17, "pct": "mean", "salary": 34300, "mean_pts": 198.8, "p90_pts": 249.1, "players": [{"name": "Trent Grisham", "pos": "OF", "team": "NYY", "salary": 3100, "mean": 24.0, "p90": 30.9}, {"name": "Cody Bellinger", "pos": "C", "team": "NYY", "salary": 3300, "mean": 19.6, "p90": 25.4}, {"name": "Ben Rice", "pos": "C", "team": "NYY", "salary": 3700, "mean": 22.5, "p90": 28.9}, {"name": "George Springer", "pos": "OF", "team": "TOR", "salary": 3600, "mean": 24.8, "p90": 30.9}, {"name": "Byron Buxton", "pos": "OF", "team": "MIN", "salary": 3400, "mean": 24.6, "p90": 30.9}, {"name": "Luke Keaschall", "pos": "2B", "team": "MIN", "salary": 2800, "mean": 19.4, "p90": 24.9}, {"name": "Ezequiel Tovar", "pos": "SS", "team": "COL", "salary": 3300, "mean": 20.6, "p90": 28.2}, {"name": "Matt Chapman", "pos": "3B", "team": "SFG", "salary": 2900, "mean": 19.5, "p90": 25.2}, {"name": "Robbie Ray", "pos": "SP", "team": "SFG", "salary": 8200, "mean": 23.8, "p90": 23.8}]}, {"id": 18, "pct": "mean", "salary": 35000, "mean_pts": 195.0, "p90_pts": 250.2, "players": [{"name": "Shea Langeliers", "pos": "C", "team": "OAK", "salary": 4000, "mean": 24.8, "p90": 31.4}, {"name": "Matt Wallner", "pos": "OF", "team": "MIN", "salary": 2900, "mean": 22.7, "p90": 31.2}, {"name": "Ezequiel Tovar", "pos": "SS", "team": "COL", "salary": 3300, "mean": 20.6, "p90": 28.2}, {"name": "TJ Rumfield", "pos": "C", "team": "COL", "salary": 3300, "mean": 22.4, "p90": 27.9}, {"name": "Yordan Alvarez", "pos": "OF", "team": "HOU", "salary": 4600, "mean": 23.3, "p90": 30.9}, {"name": "Cam Smith", "pos": "OF", "team": "HOU", "salary": 3100, "mean": 19.3, "p90": 25.7}, {"name": "Brice Matthews", "pos": "2B", "team": "HOU", "salary": 2700, "mean": 18.6, "p90": 25.9}, {"name": "Matt Chapman", "pos": "3B", "team": "SFG", "salary": 2900, "mean": 19.5, "p90": 25.2}, {"name": "Robbie Ray", "pos": "SP", "team": "SFG", "salary": 8200, "mean": 23.8, "p90": 23.8}]}, {"id": 19, "pct": "mean", "salary": 35000, "mean_pts": 192.1, "p90_pts": 242.6, "players": [{"name": "Jeff McNeil", "pos": "2B", "team": "OAK", "salary": 2700, "mean": 18.9, "p90": 24.7}, {"name": "Kyle Tucker", "pos": "OF", "team": "LAD", "salary": 4300, "mean": 22.3, "p90": 28.2}, {"name": "Freddie Freeman", "pos": "C", "team": "LAD", "salary": 3400, "mean": 20.1, "p90": 25.7}, {"name": "Teoscar Hernández", "pos": "OF", "team": "LAD", "salary": 2900, "mean": 20.1, "p90": 24.9}, {"name": "Matt Wallner", "pos": "OF", "team": "MIN", "salary": 2900, "mean": 22.7, "p90": 31.2}, {"name": "Javier Báez", "pos": "3B", "team": "DET", "salary": 2500, "mean": 18.0, "p90": 25.2}, {"name": "Sean Murphy", "pos": "C", "team": "ATL", "salary": 2700, "mean": 21.6, "p90": 28.4}, {"name": "Willy Adames", "pos": "SS", "team": "SFG", "salary": 2800, "mean": 19.3, "p90": 25.2}, {"name": "Cristopher Sánchez", "pos": "SP", "team": "PHI", "salary": 10800, "mean": 29.1, "p90": 29.1}]}, {"id": 20, "pct": "mean", "salary": 34900, "mean_pts": 191.6, "p90_pts": 240.3, "players": [{"name": "George Springer", "pos": "OF", "team": "TOR", "salary": 3600, "mean": 24.8, "p90": 30.9}, {"name": "Vladimir Guerrero Jr.", "pos": "C", "team": "TOR", "salary": 3600, "mean": 19.3, "p90": 25.2}, {"name": "Ernie Clement", "pos": "C", "team": "TOR", "salary": 2700, "mean": 15.9, "p90": 22.9}, {"name": "Andrés Giménez", "pos": "2B", "team": "TOR", "salary": 3300, "mean": 14.1, "p90": 19.4}, {"name": "Byron Buxton", "pos": "OF", "team": "MIN", "salary": 3400, "mean": 24.6, "p90": 30.9}, {"name": "Mickey Moniak", "pos": "OF", "team": "COL", "salary": 3300, "mean": 24.7, "p90": 30.9}, {"name": "Jeremy Peña", "pos": "SS", "team": "HOU", "salary": 3600, "mean": 22.7, "p90": 28.9}, {"name": "Matt Chapman", "pos": "3B", "team": "SFG", "salary": 2900, "mean": 19.5, "p90": 25.2}, {"name": "Nathan Eovaldi", "pos": "SP", "team": "TEX", "salary": 8500, "mean": 26.0, "p90": 26.0}]}];
+const posClass = p => p==='SP'?'pos-sp':p==='OF'?'pos-of':p==='C'?'pos-c':'pos-inf';
+const bClass   = p => ({mean:'b-mean',p75:'b-p75',p90:'b-p90',blend:'b-blend'})[p]||'b-mean';
+const bLabel   = p => ({mean:'Mean',p75:'P75',p90:'P90',blend:'Blend'})[p]||p;
+const posOrder = {SP:0,C:1,'C/1B':1,'1B':2,'2B':3,'3B':4,SS:5,OF:6,UTIL:7};
+
+function exposure(lus) {
+  const e={};
+  lus.forEach(l=>l.players.forEach(p=>{e[p.name]=(e[p.name]||0)+1}));
+  return e;
+}
+
+function render(lus) {
+  const exp = exposure(lus);
+  const n   = lus.length;
+  document.getElementById('lu_summary').innerHTML = !n ? '' : `
+    <div class="lu-stat"><div class="sl">Lineups</div><div class="sv">${n}</div></div>
+    <div class="lu-stat"><div class="sl">Avg mean</div><div class="sv">${(lus.reduce((s,l)=>s+l.mean_pts,0)/n).toFixed(1)}</div></div>
+    <div class="lu-stat"><div class="sl">Avg P90</div><div class="sv">${(lus.reduce((s,l)=>s+l.p90_pts,0)/n).toFixed(1)}</div></div>
+    <div class="lu-stat"><div class="sl">Max exposure</div><div class="sv">${(Math.max(...Object.values(exp))/n*100).toFixed(0)}%</div></div>
+  `;
+  const grid = document.getElementById('lu_grid');
+  grid.innerHTML = '';
+  lus.forEach((lu, idx) => {
+    const sorted = [...lu.players].sort((a,b)=>(posOrder[a.pos]??8)-(posOrder[b.pos]??8));
+    const highExp = Object.entries(exp).filter(([,c])=>c/n>=0.3).map(([nm,c])=>`${nm} — ${(c/n*100).toFixed(0)}%`);
+    const d = document.createElement('div');
+    d.className = 'lu-card';
+    d.innerHTML = `
+      <div class="lu-hdr" onclick="lu_toggle('${lu.id}')">
+        <div class="lu-left">
+          <span class="lu-num">#${idx+1}</span>
+          <span class="lu-badge ${bClass(lu.pct)}">${bLabel(lu.pct)}</span>
+        </div>
+        <div class="lu-right">
+          <div class="lu-pg"><div class="pl">Mean</div><div class="pv">${lu.mean_pts.toFixed(1)}</div></div>
+          <div class="lu-pg"><div class="pl">P90</div><div class="pv">${lu.p90_pts.toFixed(1)}</div></div>
+          <div class="lu-pg"><div class="pl">Salary</div><div class="pv">$${lu.salary.toLocaleString()}</div></div>
+          <span class="lu-chev" id="luchev_${lu.id}">▶</span>
+        </div>
+      </div>
+      <div class="lu-body" id="lubody_${lu.id}">
+        <table class="lu-tbl">
+          <thead><tr><th>Pos</th><th>Player</th><th>Team</th><th class="r">Salary</th><th class="r">Mean</th><th class="r">P90</th></tr></thead>
+          <tbody>
+            ${sorted.map(p=>`
+              <tr>
+                <td><span class="${posClass(p.pos)}">${p.pos}</span></td>
+                <td>${p.name}</td>
+                <td style="color:#888">${p.team}</td>
+                <td class="r">$${p.salary.toLocaleString()}</td>
+                <td class="r">${p.mean.toFixed(1)}</td>
+                <td class="r">${p.p90.toFixed(1)}</td>
+              </tr>
+            `).join('')}
+            <tr class="lu-total">
+              <td colspan="3">Total</td>
+              <td class="r">$${lu.salary.toLocaleString()}</td>
+              <td class="r">${lu.mean_pts.toFixed(1)}</td>
+              <td class="r">${lu.p90_pts.toFixed(1)}</td>
+            </tr>
+          </tbody>
+        </table>
+        ${highExp.length ? `<div class="exp-bar"><div class="exp-lbl">Players in ≥30% of lineups</div><div class="exp-pills">${highExp.map(s=>`<span class="exp-pill">${s}</span>`).join('')}</div></div>` : ''}
+      </div>
+    `;
+    grid.appendChild(d);
+  });
+}
+
+function lu_toggle(id) {
+  document.getElementById('lubody_'+id).classList.toggle('open');
+  document.getElementById('luchev_'+id).classList.toggle('open');
+}
+function lu_expandAll()   { document.querySelectorAll('.lu-body').forEach(b=>b.classList.add('open')); document.querySelectorAll('.lu-chev').forEach(c=>c.classList.add('open')); }
+function lu_collapseAll() { document.querySelectorAll('.lu-body').forEach(b=>b.classList.remove('open')); document.querySelectorAll('.lu-chev').forEach(c=>c.classList.remove('open')); }
+function lu_refresh() {
+  const pct  = document.getElementById('lu_pctF').value;
+  const sort = document.getElementById('lu_sortF').value;
+  const min  = parseFloat(document.getElementById('lu_minPts').value)||0;
+  let lus = DATA.filter(l => (pct==='all'||l.pct===pct) && l.mean_pts>=min);
+  lus.sort((a,b) => sort==='p90'?b.p90_pts-a.p90_pts:sort==='salary'?b.salary-a.salary:b.mean_pts-a.mean_pts);
+  render(lus);
+}
+lu_refresh();
+</script>
+</body>
+</html>
